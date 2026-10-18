@@ -157,3 +157,23 @@ class MissingValueTests(unittest.TestCase):
         self.assertEqual(result["rows"][0][0], "NULL")
         self.assertEqual(result["issues"][0]["message"], "Valor obligatorio ausente")
         self.assertEqual(result["clean"], [["a@example.com"]])
+
+
+class LargerCsvTests(unittest.TestCase):
+    def test_accepts_csv_above_previous_size_and_row_limits_without_truncation(self):
+        payload = "x" * 200
+        raw = ("id,contenido\n" + "".join(f"{i:06d},{payload}\n" for i in range(110_000))).encode()
+        self.assertGreater(len(raw), 20 * 1024 * 1024)
+        data = read_csv(raw)
+        self.assertEqual(len(data.rows), 110_000)
+        self.assertEqual(data.rows[-1][0], "109999")
+
+    def test_accepts_more_than_previous_cell_limit_and_enforces_boundary(self):
+        header = ",".join(f"c{i}" for i in range(21)) + "\n"
+        raw = (header + (",".join(["1"] * 21) + "\n") * 100_001).encode()
+        self.assertEqual(len(read_csv(raw).rows), 100_001)
+        # Un límite reducido comprueba la frontera real sin crear millones de celdas en CI.
+        with patch("quality_studio.engine.MAX_CELLS", 4):
+            self.assertEqual(len(read_csv(b"a,b\n1,2\n3,4\n").rows), 2)
+            with self.assertRaises(DataError):
+                read_csv(b"a,b\n1,2\n3,4\n5,6\n")

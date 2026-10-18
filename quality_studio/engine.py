@@ -10,10 +10,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
-MAX_BYTES = 20 * 1024 * 1024
-MAX_ROWS = 100_000
+MAX_BYTES = 100 * 1024 * 1024
+MAX_ROWS = 500_000
 MAX_COLUMNS = 100
-MAX_CELLS = 2_000_000
+MAX_CELLS = 5_000_000
 MAX_RULE_BYTES = 100_000
 MAX_ISSUES = 20_000
 MISSING = ["", "NULL", "N/A"]
@@ -46,7 +46,7 @@ class Dataset:
 
 def read_csv(raw, name="datos.csv", delimiter="auto", encoding="utf-8-sig"):
     if not raw or len(raw) > MAX_BYTES:
-        raise DataError("El CSV está vacío o supera 20 MiB.")
+        raise DataError(f"El CSV está vacío o supera {MAX_BYTES // (1024 * 1024)} MiB.")
     if encoding not in {"utf-8-sig", "cp1252"}:
         raise DataError("Codificación no admitida.")
     try:
@@ -77,7 +77,7 @@ def read_csv(raw, name="datos.csv", delimiter="auto", encoding="utf-8-sig"):
                 raise DataError(f"El registro {len(rows) + 2} tiene un número de columnas incorrecto.")
             rows.append(row)
             if len(rows) > MAX_ROWS or len(rows) * len(columns) > MAX_CELLS:
-                raise DataError("El CSV supera 100 000 filas o 2 millones de celdas.")
+                raise DataError(f"El CSV supera {MAX_ROWS:,} filas o {MAX_CELLS:,} celdas.".replace(",", " "))
         if not rows:
             raise DataError("El CSV solo contiene la cabecera; añade al menos una fila.")
     except (csv.Error, StopIteration) as exc:

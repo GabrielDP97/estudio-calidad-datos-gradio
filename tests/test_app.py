@@ -64,3 +64,13 @@ class GradioIntegrationTests(unittest.TestCase):
         saved_view = self.client.predict(dataset, rules, api_name="/save_rules")
         self.assertIn("Contrato guardado", saved_view[11])
         self.assertIn("8 filas", saved_view[4])
+
+
+    def test_empty_project_and_no_selected_csv_have_valid_empty_views(self):
+        workspace_update, _ = self.client.predict("Proyecto vacío", api_name="/create_workspace")
+        datasets, _, _, _ = self.client.predict(workspace_update["value"], api_name="/select_workspace")
+        self.assertIsNone(datasets["value"])
+        view = self.client.predict(None, api_name="/load_dataset")
+        self.assertEqual(view[0], "")
+        self.assertEqual(view[2].get("value", view[2])["data"], [])
+        self.assertEqual(view[12].get("value", view[12])["data"], [])

@@ -10,7 +10,7 @@ os.environ["GRADIO_ANALYTICS_ENABLED"] = "False"
 os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
 import gradio as gr
 
-from .engine import DataError, MAX_BYTES, MAX_RULE_BYTES, audit, profile, validate_rules
+from .engine import DataError, MAX_BYTES, MAX_ROWS, MAX_COLUMNS, MAX_CELLS, MAX_RULE_BYTES, audit, profile, validate_rules
 from .store import Studio
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -34,7 +34,7 @@ def pretty(value):
 
 def frame(columns, rows):
     # No inferir números: conservar identificadores, ceros iniciales y valores originales.
-    return gr.Dataframe(headers=columns, value=rows[:100], datatype="str", interactive=False, type="array")
+    return gr.Dataframe(headers=columns or ["Sin datos"], value=rows[:100], datatype="str", interactive=False, type="array")
 
 
 def metrics(summary, preview=False):
@@ -108,7 +108,7 @@ def build_app(storage_root=None):
             try:
                 source = Path(path)
                 if source.stat().st_size > MAX_BYTES:
-                    raise DataError("El archivo supera 20 MiB.")
+                    raise DataError(f"El archivo supera {MAX_BYTES // (1024 * 1024)} MiB.")
                 selected = studio.add_dataset(token, source.read_bytes(), source.name, separator, encoding)
                 added += 1
             except DataError as exc:
@@ -267,7 +267,7 @@ def build_app(storage_root=None):
                 add = gr.Button("Incorporar archivos", variant="primary")
                 dataset = gr.Dropdown(choices=[], label="CSV activo", interactive=True)
                 status = gr.Textbox(label="Estado", value="Empieza con el ejemplo o crea tu proyecto.", interactive=False, lines=3)
-                gr.Markdown("**Límites:** 20 MiB por CSV · 100 000 filas · 100 columnas · 2 millones de celdas. Hasta 10 CSV por proyecto.")
+                gr.Markdown(f"**Límites:** {MAX_BYTES // (1024 * 1024)} MiB por CSV · {MAX_ROWS:,} filas · {MAX_COLUMNS} columnas · {MAX_CELLS:,} celdas. Hasta 10 CSV por proyecto.".replace(",", " "))
             with gr.Column(scale=3, min_width=480):
                 with gr.Tabs() as tabs:
                     with gr.Tab("Diagnóstico", id="diagnostic"):

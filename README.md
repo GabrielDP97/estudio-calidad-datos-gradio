@@ -4,7 +4,7 @@
 
 Una aplicación con **Gradio, Python y SQLite** para diagnosticar CSV, preparar contratos de datos y guardar ejecuciones reproducibles. Funciona en tu ordenador, sin claves de API ni servicios de pago.
 
-**Versión 1.0.0.** El análisis es determinista: no utiliza un modelo de IA ni inventa valores para corregir errores. Gradio aporta la interfaz y las conexiones entre controles y servicios Python.
+**Versión 1.1.0.** El análisis es determinista: no utiliza un modelo de IA ni inventa valores para corregir errores. Gradio aporta la interfaz y las conexiones entre controles y servicios Python.
 
 ![Diagnóstico y limpieza en la aplicación](docs/aplicacion.png)
 
@@ -120,15 +120,19 @@ flowchart LR
 
 | Recurso | Límite |
 | --- | --- |
-| Tamaño de un CSV | 20 MiB |
-| Filas por CSV | 100 000 |
+| Tamaño de un CSV | 100 MiB |
+| Filas por CSV | 500 000 |
 | Columnas | 100 |
-| Celdas | 2 millones |
+| Celdas | 5 millones |
 | Incidencias en una ejecución | 20 000; si se superan, se pide dividir el CSV o revisar reglas |
 | CSV por proyecto | 10 distintos; el mismo contenido no se duplica |
 | Contrato JSON | 100 KB |
 | Vista previa | Primeros 100 registros; el motor analiza el conjunto completo dentro de los límites |
 | Historial visible | Últimas 100 ejecuciones por proyecto; las anteriores permanecen en disco |
+
+Verificación manual: un CSV sintético de 104 856 013 bytes (casi 100 MiB), con 257 000 filas, se ha subido desde el navegador, procesado y exportado completo; se ha comprobado el número de filas y el SHA-256 de la salida.
+
+Los archivos se procesan en memoria. Los CSV grandes tardan más y pueden consumir varios GB de RAM; la cantidad depende de las filas, columnas y longitud de los valores. El tamaño permitido no garantiza que cualquier estructura quepa en los otros límites.
 
 El límite adicional de un campo CSV es un millón de caracteres. No se procesan XLSX, PDF, bases de datos remotas ni múltiples hojas. No se hacen uniones entre CSV ni se entrenan modelos de IA.
 
@@ -147,7 +151,7 @@ Para copiar o respaldar un proyecto, detén el servidor y conserva la carpeta `.
 .venv\Scripts\python.exe -m pip check
 ```
 
-La suite incluye **32 pruebas**, entre ellas el flujo HTTP real de Gradio. GitHub Actions instala las dependencias fijadas y ejecuta las pruebas al actualizar `main` o abrir una pull request. Se comprueban errores CSV, codificaciones, límites, validación de reglas, transformaciones, exportación segura, reproducibilidad, conservación de originales, reapertura del historial y fallos de escritura. La integración de Gradio usa un servidor local temporal y datos sintéticos.
+La suite incluye **35 pruebas**, entre ellas el flujo HTTP real de Gradio. GitHub Actions instala las dependencias fijadas y ejecuta las pruebas al actualizar `main` o abrir una pull request. Se comprueban errores CSV, codificaciones, límites, validación de reglas, transformaciones, exportación segura, reproducibilidad, conservación de originales, reapertura del historial y fallos de escritura. La integración de Gradio usa un servidor local temporal y datos sintéticos.
 
 ## Problemas frecuentes
 

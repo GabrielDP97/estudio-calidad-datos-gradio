@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
+from . import __version__
 from .engine import (DataError, MAX_BYTES, canonical, csv_bytes, digest, profile,
                      read_csv, run_pipeline, suggested_rules, validate_rules)
 
@@ -89,7 +90,7 @@ class Studio:
         if not path.is_file():
             raise DataError("Falta la copia original de este CSV.")
         if path.stat().st_size > MAX_BYTES:
-            raise DataError("La copia original supera 20 MiB. Carga un CSV dentro del límite.")
+            raise DataError(f"La copia original supera {MAX_BYTES // (1024 * 1024)} MiB. Carga un CSV dentro del límite.")
         raw = path.read_bytes()
         if digest(raw) != info["sha256"]:
             raise DataError("La copia original ha cambiado fuera de la aplicación. Carga el archivo de nuevo como otra versión.")
@@ -143,7 +144,7 @@ class Studio:
         destination = runs / token
         clean = csv_bytes(dataset.columns, result["clean"])
         rules_hash = digest(canonical(result["rules"]).encode("utf-8"))
-        report = {"version": 1, "engine_version": "1.0.0", "run_id": token, "created_at": created,
+        report = {"version": 1, "engine_version": __version__, "run_id": token, "created_at": created,
                   "dataset": dataset.name, "input_sha256": dataset.sha256, "rules_sha256": rules_hash,
                   "output_sha256": digest(clean), "summary": result["summary"], "stages": result["stages"],
                   "profile_before": result["before"], "profile_after": result["after"],

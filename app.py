@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parent
 os.environ["GRADIO_TEMP_DIR"] = str(ROOT / ".private" / "gradio-cache")
 
 from quality_studio.ui import CSS, build_app
+from quality_studio.engine import MAX_BYTES
 import gradio as gr
 
 
@@ -19,7 +20,7 @@ def main():
     app = build_app()
     app.queue(default_concurrency_limit=1, max_size=8)
     app.launch(server_name="127.0.0.1", server_port=args.port, share=False, inbrowser=False,
-               show_error=False, footer_links=[], max_file_size=20 * 1024 * 1024, css=CSS,
+               show_error=False, footer_links=[], max_file_size=MAX_BYTES, css=CSS,
                theme=gr.themes.Soft(primary_hue="emerald", neutral_hue="slate", font=["Segoe UI", "Arial", "sans-serif"]),
                blocked_paths=[str(ROOT / ".git"), str(ROOT / ".venv"), str(ROOT / ".private" / "data" / "studio.sqlite3")])
 
