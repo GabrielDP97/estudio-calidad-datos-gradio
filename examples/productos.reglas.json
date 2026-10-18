@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "columns": {
+    "sku": {"type": "text", "required": true, "trim": true, "uppercase": true},
+    "producto": {"type": "text", "required": true, "trim": true},
+    "precio": {"type": "decimal", "required": true, "min": 0, "trim": true},
+    "activo": {"type": "boolean", "required": true, "trim": true, "lowercase": true}
+  },
+  "unique": [["sku"]],
+  "drop_duplicates": true,
+  "duplicate_subset": ["sku"],
+  "missing_values": ["", "NULL", "N/A"]
+}

@@ -1,0 +1,9 @@
+id,nombre,email,edad,fecha_alta,ciudad
+1, Ana Torres , ANA@EJEMPLO.ES ,34,2026-10-01,Madrid
+2,Luis Pérez,luis.ejemplo.es,29,2026-10-02,Valencia
+3,  Marta Ruiz  , MARTA@EJEMPLO.ES ,17,2026-10-03,Bilbao
+4,,NULL,41,2026-02-31,Madrid
+5,Pablo Gil,pablo@ejemplo.es,200,2026-10-04,Zaragoza
+1,Ana Torres,ana@ejemplo.es,34,2026-10-01,Madrid
+6,Inés Sol,ines@ejemplo.es,25,2026-10-05,
+7,Omar Díaz,omar@ejemplo.es,39,2026-10-06,"  Sevilla "

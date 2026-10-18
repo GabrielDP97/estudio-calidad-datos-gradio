@@ -1,0 +1,6 @@
+sku;producto;precio;activo
+P001; Cuaderno ;3.50;true
+P002;Bolígrafo;-2;true
+P003;Carpeta;4.00;yes
+P001;Cuaderno;3.50;true
+P004;Regla;1.25;false

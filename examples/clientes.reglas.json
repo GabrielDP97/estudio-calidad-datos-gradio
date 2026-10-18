@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "columns": {
+    "id": {"type": "integer", "required": true, "trim": true},
+    "nombre": {"type": "text", "required": true, "trim": true},
+    "email": {"type": "email", "required": true, "trim": true, "lowercase": true},
+    "edad": {"type": "integer", "required": true, "min": 18, "max": 120, "trim": true},
+    "fecha_alta": {"type": "date", "required": true, "date_format": "%Y-%m-%d", "trim": true},
+    "ciudad": {"type": "text", "trim": true, "fill": "Sin indicar"}
+  },
+  "unique": [["id"]],
+  "drop_duplicates": true,
+  "duplicate_subset": ["id"],
+  "missing_values": ["", "NULL", "N/A"]
+}
