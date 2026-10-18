@@ -56,3 +56,11 @@ class GradioIntegrationTests(unittest.TestCase):
         self.assertEqual(report["output_sha256"], json.loads(second[8])["output_sha256"])
         _, history, _, _ = self.client.predict(workspace, api_name="/select_workspace")
         self.assertEqual(len(history.get("value", history)["data"]), 2)
+
+        other_dataset = dataset_update["choices"][1][1]
+        other_view = self.client.predict(other_dataset, api_name="/load_dataset")
+        self.assertEqual(other_view[12].get("value", other_view[12])["data"], [])
+        self.assertEqual(other_view[13], "")
+        saved_view = self.client.predict(dataset, rules, api_name="/save_rules")
+        self.assertIn("Contrato guardado", saved_view[11])
+        self.assertIn("8 filas", saved_view[4])

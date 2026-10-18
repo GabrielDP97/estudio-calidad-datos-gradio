@@ -128,7 +128,7 @@ def build_app(storage_root=None):
         if not token:
             return ("", gr.Dropdown(choices=[], value=None), frame([], []), frame([], []),
                     "Selecciona un CSV para ver su diagnóstico.", frame([], []), None,
-                    frame([], []), frame([], []), "", None, "")
+                    frame([], []), frame([], []), "", None, "", frame([], []), "")
         dataset = studio.load(token)
         rules = validate_rules(studio.get_rules(token), dataset.columns)
         issues = audit(dataset, dataset.rows, rules)
@@ -142,7 +142,8 @@ def build_app(storage_root=None):
                 frame(["Columna", "Tipo sugerido", "Filas", "Ausentes", "Distintos", "Ejemplos"], profile_rows(stats)),
                 diagnostics, frame(["Fila CSV", "Columna", "Valor", "Incidencia"], issue_rows(issues)),
                 str(studio.input_path(token)), frame(dataset.columns, dataset.rows), frame(dataset.columns, []),
-                "", None, "Original cargado. Edita las reglas y pulsa Vista previa; no se ha guardado una ejecución.")
+                "", None, "Original cargado. Edita las reglas y pulsa Vista previa; no se ha guardado una ejecución.",
+                frame(["Fila CSV", "Columna", "Valor", "Incidencia"], []), "")
 
     @guarded
     def apply_column(token, text, column, kind, required, trim, casing, fill_enabled, fill, minimum, maximum, date_format, unique, dedupe, subset):
@@ -210,7 +211,9 @@ def build_app(storage_root=None):
     @guarded
     def save_rules(token, text):
         studio.save_rules(token, text)
-        return "Contrato guardado para este CSV. El historial previo se conserva."
+        view = list(load_dataset(token))
+        view[11] = "Contrato guardado para este CSV. El historial previo se conserva."
+        return tuple(view)
 
     @guarded
     def import_rules(token, path):
@@ -327,7 +330,7 @@ def build_app(storage_root=None):
         gr.HTML('<p class="studio-foot">Gradio presenta la interfaz; Python valida y transforma; SQLite conserva el historial. Sin modelos externos ni claves de API.<br>Los datos se guardan en este ordenador, dentro de <code>.private/data</code>. El repositorio solo incluye ejemplos sintéticos.</p>')
 
         dataset_outputs = [rules, column, original_table, profile_table, diagnostic, issues_before, original_download,
-                           before_table, after_table, preview_metrics, downloads, status]
+                           before_table, after_table, preview_metrics, downloads, status, issues_after, explanation]
         comparison_outputs = [before_table, after_table, preview_metrics, issues_after, explanation]
         editor_outputs = [kind, required, trim, casing, fill_enabled, fill, minimum, maximum, date_format, unique, dedupe, subset]
         create.click(create_workspace, [project_name], [workspace, status])
@@ -341,7 +344,7 @@ def build_app(storage_root=None):
         preview_button.click(preview, [dataset, rules], [*comparison_outputs, status, tabs])
         execute_button.click(execute, [workspace, dataset, rules], [*comparison_outputs, downloads, history_table, run_choice, report, status, tabs])
         commit_comparison.click(execute, [workspace, dataset, rules], [*comparison_outputs, downloads, history_table, run_choice, report, status, tabs])
-        save_button.click(save_rules, [dataset, rules], [status])
+        save_button.click(save_rules, [dataset, rules], dataset_outputs).then(read_column, [dataset, rules, column], editor_outputs)
         import_button.click(import_rules, [dataset, import_file], [rules, status])
         export_button.click(export_rules, [dataset, rules], [rules_download, status])
         reset_button.click(restore, [dataset], dataset_outputs).then(read_column, [dataset, rules, column], editor_outputs)
