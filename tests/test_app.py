@@ -74,3 +74,37 @@ class GradioIntegrationTests(unittest.TestCase):
         self.assertEqual(view[0], "")
         self.assertEqual(view[2].get("value", view[2])["data"], [])
         self.assertEqual(view[12].get("value", view[12])["data"], [])
+
+    def test_language_switch_translates_results_and_errors_and_isolates_sessions(self):
+        client = Client(self.client.src, verbose=False)
+        workspace, _ = client.predict(api_name="/demo")
+        selected, _, _, _ = client.predict(workspace["value"], api_name="/select_workspace")
+        dataset = selected["value"]
+        view = client.predict(dataset, api_name="/load_dataset")
+        rules = view[0]
+        preview = client.predict(dataset, rules, api_name="/preview")
+        # Only presentation fields are language-change inputs; unsaved JSON and CSV
+        # data are never round-tripped or rewritten by the language selector.
+        for code, valid_label, preview_label, error in (
+            ("en", "Valid rows", "Preview calculated", "valid JSON"),
+            ("es", "Filas válidas", "Vista previa calculada", "JSON válido"),
+            ("de", "Gültige Zeilen", "Vorschau aus dem Original", "gültiges JSON"),
+        ):
+            changed = client.predict(code, preview[5], view[4], preview[4], preview[2],
+                                     view[3]["value"], view[5]["value"],
+                                     preview[3]["value"], api_name="/change_language")
+            self.assertTrue(any(isinstance(item, str) and preview_label in item for item in changed))
+            result = client.predict(dataset, rules, api_name="/preview")
+            self.assertIn(valid_label, result[2])
+            self.assertIn(preview_label, result[5])
+            self.assertEqual(result[1]["value"]["data"], preview[1]["value"]["data"])
+            self.assertEqual(client.predict(dataset, api_name="/load_dataset")[0], rules)
+            with self.assertRaisesRegex(Exception, error):
+                client.predict(dataset, "{broken", api_name="/preview")
+        # A fresh browser session still starts in Spanish.
+        other = Client(self.client.src, verbose=False)
+        another_workspace, _ = other.predict(api_name="/demo")
+        another_dataset, _, _, _ = other.predict(another_workspace["value"], api_name="/select_workspace")
+        another_id = another_dataset["value"]
+        another_rules = other.predict(another_id, api_name="/load_dataset")[0]
+        self.assertIn("Filas válidas", other.predict(another_id, another_rules, api_name="/preview")[2])

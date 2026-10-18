@@ -12,6 +12,7 @@ import gradio as gr
 
 from .engine import DataError, MAX_BYTES, MAX_ROWS, MAX_COLUMNS, MAX_CELLS, MAX_RULE_BYTES, audit, profile, validate_rules
 from .store import Studio
+from .i18n import LANGUAGES, language, tr, type_label, native_locale_js
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -22,9 +23,9 @@ def guarded(function):
         try:
             return function(*args, **kwargs)
         except DataError as exc:
-            raise gr.Error(str(exc)) from None
+            raise gr.Error(tr(str(exc))) from None
         except (OSError, sqlite3.Error):
-            raise gr.Error("No se pudo leer o guardar el proyecto. Comprueba el espacio libre y los permisos; el original se conserva.") from None
+            raise gr.Error(tr("No se pudo leer o guardar el proyecto. Comprueba el espacio libre y los permisos; el original se conserva.")) from None
     return wrapped
 
 
@@ -32,23 +33,24 @@ def pretty(value):
     return json.dumps(value, ensure_ascii=False, indent=2)
 
 
-def frame(columns, rows):
+def frame(columns, rows, translate=True):
     # No inferir números: conservar identificadores, ceros iniciales y valores originales.
-    return gr.Dataframe(headers=columns or ["Sin datos"], value=rows[:100], datatype="str", interactive=False, type="array")
+    headers = [tr(c) for c in columns] if translate else columns
+    return gr.Dataframe(headers=headers or [tr("Sin datos")], value=rows[:100], datatype="str", interactive=False, type="array")
 
 
 def metrics(summary, preview=False):
     values = [("Filas de entrada", summary["input_rows"]), ("Filas válidas", summary["clean_rows"]),
               ("Filas excluidas", summary["rejected_rows"]), ("Celdas modificadas", summary["changed_cells"])]
-    return '<div class="metrics">' + ''.join(f'<div><span>{label}</span><strong>{value:,}</strong></div>' for label, value in values) + '</div>'
+    return '<div class="metrics">' + ''.join(f'<div><span>{tr(label)}</span><strong>{value:,}</strong></div>' for label, value in values) + '</div>'
 
 
 def profile_rows(value):
-    return [[c["column"], c["type_suggestion"], c["rows"], c["missing"], c["distinct"], " | ".join(c["examples"])] for c in value["columns"]]
+    return [[c["column"], type_label(c["type_suggestion"]), c["rows"], c["missing"], c["distinct"], " | ".join(c["examples"])] for c in value["columns"]]
 
 
 def issue_rows(issues):
-    return [[i["row"], i["column"], i["value"], i["message"]] for i in issues[:100]]
+    return [[i["row"], i["column"], i["value"], tr(i["message"])] for i in issues[:100]]
 
 
 CSS = """
@@ -138,10 +140,10 @@ def build_app(storage_root=None):
                        "Los tipos sugeridos son orientativos. Las tablas muestran hasta 100 registros. "
                        f"Original SHA-256: `{dataset.sha256}`")
         return (pretty(rules), gr.Dropdown(choices=dataset.columns, value=dataset.columns[0]),
-                frame(dataset.columns, dataset.rows),
+                frame(dataset.columns, dataset.rows, translate=False),
                 frame(["Columna", "Tipo sugerido", "Filas", "Ausentes", "Distintos", "Ejemplos"], profile_rows(stats)),
                 diagnostics, frame(["Fila CSV", "Columna", "Valor", "Incidencia"], issue_rows(issues)),
-                str(studio.input_path(token)), frame(dataset.columns, dataset.rows), frame(dataset.columns, []),
+                str(studio.input_path(token)), frame(dataset.columns, dataset.rows, translate=False), frame(dataset.columns, [], translate=False),
                 "", None, "Original cargado. Edita las reglas y pulsa Vista previa; no se ha guardado una ejecución.",
                 frame(["Fila CSV", "Columna", "Valor", "Incidencia"], []), "")
 
@@ -191,7 +193,7 @@ def build_app(storage_root=None):
         explanation = (f"Incidencias antes: {summary['issues_before']} · Incidencias después: {summary['issues_after']}. "
                        "Las filas excluidas incluyen errores pendientes y duplicados descartados; las incidencias se cuentan por celda o restricción.\n\n"
                        "Etapas: " + ", ".join(f"{key}: {value}" for key, value in result["stages"].items()) + ".")
-        return (frame(dataset.columns, dataset.rows), frame(dataset.columns, result["rows"]), metrics(summary),
+        return (frame(dataset.columns, dataset.rows, translate=False), frame(dataset.columns, result["rows"], translate=False), metrics(summary),
                 frame(["Fila CSV", "Columna", "Valor", "Incidencia"], issue_rows(result["issues"])), explanation)
 
     @guarded
@@ -251,6 +253,8 @@ def build_app(storage_root=None):
         return paths, Path(paths[3]).read_text(encoding="utf-8")
 
     with gr.Blocks(title="Dato · Estudio de calidad", analytics_enabled=False) as app:
+        locale = gr.State("es")
+        language_picker = gr.Dropdown(choices=LANGUAGES, value="es", label="Idioma / Language / Sprache", interactive=True, min_width=180)
         gr.HTML('<div class="studio-hero"><span class="local-tag">● Local · Sin servicios de pago</span><div class="eyebrow">DATO / ESTUDIO DE CALIDAD</div><h1>Datos que merecen confianza.</h1><p>Encuentra errores, prepara reglas y revisa cada cambio antes de guardar una copia limpia. Tus originales siempre se conservan.</p></div>')
         with gr.Row():
             with gr.Column(scale=1, min_width=270):
@@ -272,10 +276,10 @@ def build_app(storage_root=None):
                 with gr.Tabs() as tabs:
                     with gr.Tab("Diagnóstico", id="diagnostic"):
                         diagnostic = gr.Markdown("### 02 / Conoce tus datos\nSelecciona un CSV o carga el ejemplo completo.")
-                        profile_table = gr.Dataframe(label="Perfil de columnas · sugerencias orientativas", interactive=False)
+                        profile_table = gr.Dataframe(label="Perfil de columnas · sugerencias orientativas", interactive=False, type="array")
                         original_table = gr.Dataframe(label="Original · primeros 100 registros", interactive=False)
                         original_download = gr.File(label="Descargar original intacto", interactive=False)
-                        issues_before = gr.Dataframe(label="Incidencias del contrato guardado · primeras 100", interactive=False)
+                        issues_before = gr.Dataframe(label="Incidencias del contrato guardado · primeras 100", interactive=False, type="array")
                     with gr.Tab("Reglas y limpieza", id="rules"):
                         gr.Markdown("### 03 / Diseña el contrato\nAplica una regla para incorporarla al JSON. El contrato solo se guarda al pulsar Guardar contrato o Ejecutar y guardar.")
                         with gr.Row():
@@ -286,7 +290,7 @@ def build_app(storage_root=None):
                             unique = gr.Checkbox(label="Valor único")
                             trim = gr.Checkbox(value=True, label="Recortar espacios")
                         with gr.Row():
-                            casing = gr.Dropdown(choices=["Sin cambio", "Minúsculas", "Mayúsculas"], value="Sin cambio", label="Mayúsculas / minúsculas")
+                            casing = gr.Dropdown(choices=[(v, v) for v in ["Sin cambio", "Minúsculas", "Mayúsculas"]], value="Sin cambio", label="Mayúsculas / minúsculas")
                             date_format = gr.Dropdown(choices=["%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"], value="%Y-%m-%d", label="Formato para fechas")
                         with gr.Row():
                             minimum = gr.Textbox(label="Mínimo numérico (opcional)", value="")
@@ -316,7 +320,7 @@ def build_app(storage_root=None):
                             before_table = gr.Dataframe(label="Antes · original, primeros 100", interactive=False)
                             after_table = gr.Dataframe(label="Después · transformado, primeros 100", interactive=False)
                         explanation = gr.Markdown("")
-                        issues_after = gr.Dataframe(label="Incidencias tras limpiar · primeras 100", interactive=False)
+                        issues_after = gr.Dataframe(label="Incidencias tras limpiar · primeras 100", interactive=False, type="array")
                         commit_comparison = gr.Button("Ejecutar y guardar estas reglas", variant="primary")
                         downloads = gr.File(label="Archivos de la última ejecución guardada", file_count="multiple", interactive=False)
                         gr.Markdown("Las descargas incluyen CSV limpio, filas excluidas con su número de origen, incidencias, informe JSON y contrato. Las filas con errores no se corrigen inventando valores.")
@@ -333,22 +337,115 @@ def build_app(storage_root=None):
                            before_table, after_table, preview_metrics, downloads, status, issues_after, explanation]
         comparison_outputs = [before_table, after_table, preview_metrics, issues_after, explanation]
         editor_outputs = [kind, required, trim, casing, fill_enabled, fill, minimum, maximum, date_format, unique, dedupe, subset]
-        create.click(create_workspace, [project_name], [workspace, status])
-        example.click(demo, [], [workspace, status])
-        workspace.change(select_workspace, [workspace], [dataset, history_table, run_choice, status])
-        add.click(add_files, [workspace, uploads, separator, encoding], [dataset, status])
-        dataset.change(load_dataset, [dataset], dataset_outputs).then(read_column, [dataset, rules, column], editor_outputs)
-        column.change(read_column, [dataset, rules, column], editor_outputs)
-        apply_rule.click(apply_column, [dataset, rules, column, kind, required, trim, casing, fill_enabled, fill,
-                                      minimum, maximum, date_format, unique, dedupe, subset], [rules, status])
-        preview_button.click(preview, [dataset, rules], [*comparison_outputs, status, tabs])
-        execute_button.click(execute, [workspace, dataset, rules], [*comparison_outputs, downloads, history_table, run_choice, report, status, tabs])
-        commit_comparison.click(execute, [workspace, dataset, rules], [*comparison_outputs, downloads, history_table, run_choice, report, status, tabs])
-        save_button.click(save_rules, [dataset, rules], dataset_outputs).then(read_column, [dataset, rules, column], editor_outputs)
-        import_button.click(import_rules, [dataset, import_file], [rules, status])
-        export_button.click(export_rules, [dataset, rules], [rules_download, status])
-        reset_button.click(restore, [dataset], dataset_outputs).then(read_column, [dataset, rules, column], editor_outputs)
-        refresh.click(lambda token: history_updates(token), [workspace], [history_table, run_choice])
-        run_choice.change(show_run, [workspace, run_choice], [history_files, report])
-        app.load(select_workspace, [workspace], [dataset, history_table, run_choice, status])
+        # Translate presentation outputs only; never walk arbitrary CSV or JSON values.
+        message_outputs = {
+            "create_workspace": [1], "select_workspace": [3], "add_files": [1], "demo": [1],
+            "load_dataset": [4, 11], "apply_column": [1], "preview": [4, 5],
+            "execute": [4, 9], "save_rules": [4, 11], "restore": [4, 11],
+            "import_rules": [1], "export_rules": [1],
+        }
+
+        def localized(function):
+            def callback(*args):
+                context = language.set(args[-1] if args[-1] in ("es", "en", "de") else "es")
+                try:
+                    output = function(*args[:-1])
+                    if function.__name__ in message_outputs:
+                        output = list(output)
+                        for index in message_outputs[function.__name__]:
+                            # Multiple-file imports can contain per-file errors after the status line.
+                            if function.__name__ == "add_files":
+                                parts = output[index].split("\n")
+                                parts[0] = tr(parts[0])
+                                for i in range(1, len(parts)):
+                                    if ": " in parts[i]:
+                                        name, message = parts[i].split(": ", 1)
+                                        parts[i] = name + ": " + tr(message)
+                                output[index] = "\n".join(parts)
+                            else:
+                                output[index] = tr(output[index])
+                    return output
+                finally:
+                    language.reset(context)
+            callback.__name__ = function.__name__
+            return callback
+
+        # Keep references to translatable properties. Updates retain values and edits.
+        static_updates = []
+        fixed_choices = {separator, kind, casing}
+        for component in list(app.blocks.values()):
+            changes = {}
+            for property_name in ("label", "placeholder"):
+                value = getattr(component, property_name, None)
+                if isinstance(value, str) and tr(value, "en") != value:
+                    changes[property_name] = value
+            if isinstance(component, (gr.Button, gr.Markdown, gr.HTML)):
+                value = component.value
+                if isinstance(value, str) and tr(value, "en") != value:
+                    changes["value"] = value
+            if component in fixed_choices:
+                changes["choices"] = list(component.choices)
+            if changes:
+                static_updates.append((component, changes))
+
+        text_components = [status, diagnostic, explanation, preview_metrics]
+        translated_tables = [profile_table, issues_before, issues_after]
+
+        def change_language(selected, *values):
+            if selected not in ("es", "en", "de"):
+                selected = "es"
+            context = language.set(selected)
+            try:
+                result = [selected]
+                for component, properties in static_updates:
+                    changes = {}
+                    for key, value in properties.items():
+                        changes[key] = ([(tr(label), stable) for label, stable in value]
+                                        if key == "choices" else tr(value))
+                    result.append(gr.update(**changes))
+                for index, value in enumerate(values[:4]):
+                    if index == 3:
+                        for label in ("Filas de entrada", "Filas válidas", "Filas excluidas", "Celdas modificadas"):
+                            for code in ("es", "en", "de"):
+                                value = (value or "").replace(tr(label, code), tr(label))
+                        result.append(value)
+                    else:
+                        result.append(tr(value))
+                for index, rows in enumerate(values[4:]):
+                    rows = [list(row) for row in (rows or [])]
+                    for row in rows:
+                        if index == 0:
+                            row[1] = type_label(row[1])
+                        else:
+                            row[3] = tr(row[3])
+                    headers = (["Columna", "Tipo sugerido", "Filas", "Ausentes", "Distintos", "Ejemplos"]
+                               if index == 0 else ["Fila CSV", "Columna", "Valor", "Incidencia"])
+                    result.append(frame(headers, rows))
+                result.append(gr.update(headers=[tr(h) for h in ["Fecha UTC", "CSV", "Válidas", "Excluidas", "SHA-256 salida (inicio)", "ID"]]))
+                return result
+            finally:
+                language.reset(context)
+
+        language_picker.change(change_language, [language_picker, *text_components, *translated_tables],
+                               [locale, *[c for c, _ in static_updates], *text_components, *translated_tables, history_table],
+                               api_visibility="undocumented").then(None, [language_picker], [], js=native_locale_js())
+        create.click(localized(create_workspace), [project_name, locale], [workspace, status])
+        example.click(localized(demo), [locale], [workspace, status])
+        workspace.change(localized(select_workspace), [workspace, locale], [dataset, history_table, run_choice, status])
+        add.click(localized(add_files), [workspace, uploads, separator, encoding, locale], [dataset, status])
+        dataset.change(localized(load_dataset), [dataset, locale], dataset_outputs).then(localized(read_column), [dataset, rules, column, locale], editor_outputs)
+        column.change(localized(read_column), [dataset, rules, column, locale], editor_outputs)
+        apply_rule.click(localized(apply_column), [dataset, rules, column, kind, required, trim, casing, fill_enabled, fill,
+                                      minimum, maximum, date_format, unique, dedupe, subset, locale], [rules, status])
+        preview_button.click(localized(preview), [dataset, rules, locale], [*comparison_outputs, status, tabs])
+        execute_button.click(localized(execute), [workspace, dataset, rules, locale], [*comparison_outputs, downloads, history_table, run_choice, report, status, tabs])
+        commit_comparison.click(localized(execute), [workspace, dataset, rules, locale], [*comparison_outputs, downloads, history_table, run_choice, report, status, tabs])
+        save_button.click(localized(save_rules), [dataset, rules, locale], dataset_outputs).then(localized(read_column), [dataset, rules, column, locale], editor_outputs)
+        import_button.click(localized(import_rules), [dataset, import_file, locale], [rules, status])
+        export_button.click(localized(export_rules), [dataset, rules, locale], [rules_download, status])
+        reset_button.click(localized(restore), [dataset, locale], dataset_outputs).then(localized(read_column), [dataset, rules, column, locale], editor_outputs)
+        refresh.click(localized(lambda token: history_updates(token)), [workspace, locale], [history_table, run_choice])
+        run_choice.change(localized(show_run), [workspace, run_choice, locale], [history_files, report])
+        app.load(localized(select_workspace), [workspace, locale], [dataset, history_table, run_choice, status])
+        app.load(None, [language_picker], [], js=native_locale_js())
     return app

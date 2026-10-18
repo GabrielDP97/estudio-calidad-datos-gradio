@@ -4,7 +4,7 @@
 
 Una aplicación con **Gradio, Python y SQLite** para diagnosticar CSV, preparar contratos de datos y guardar ejecuciones reproducibles. Funciona en tu ordenador, sin claves de API ni servicios de pago.
 
-**Versión 1.1.0.** El análisis es determinista: no utiliza un modelo de IA ni inventa valores para corregir errores. Gradio aporta la interfaz y las conexiones entre controles y servicios Python.
+**Versión 1.2.0.** El análisis es determinista: no utiliza un modelo de IA ni inventa valores para corregir errores. Gradio aporta la interfaz y las conexiones entre controles y servicios Python.
 
 ![Diagnóstico y limpieza en la aplicación](docs/aplicacion.png)
 
@@ -23,6 +23,12 @@ python -m venv .venv
 Abre **http://127.0.0.1:7860/**. Mantén la terminal abierta. También puedes usar `iniciar.cmd` después de instalar el entorno. Si el puerto está ocupado, ejecuta `app.py --port 7861`.
 
 En Linux usa `python3 -m venv .venv` y `.venv/bin/python` en lugar de `.venv\Scripts\python.exe`. El repositorio es privado; para clonarlo necesitas una cuenta con acceso.
+
+## Idiomas
+
+El selector **Idioma / Language / Sprache**, situado arriba, permite elegir **Español**, **English** o **Deutsch**. Cambia los textos, controles, diagnósticos, incidencias y resultados sin reiniciar ni perder las reglas en edición. Cada sesión mantiene su propio idioma; al recargar empieza en español.
+
+Los nombres de proyectos, archivos, columnas y valores del CSV se conservan. Los contratos JSON y los informes descargables mantienen su formato técnico estable para que el idioma no cambie las reglas, los archivos generados ni sus huellas. Las traducciones están incluidas en el código y no utilizan servicios externos.
 
 ## Demostración
 
@@ -151,7 +157,7 @@ Para copiar o respaldar un proyecto, detén el servidor y conserva la carpeta `.
 .venv\Scripts\python.exe -m pip check
 ```
 
-La suite incluye **35 pruebas**, entre ellas el flujo HTTP real de Gradio. GitHub Actions instala las dependencias fijadas y ejecuta las pruebas al actualizar `main` o abrir una pull request. Se comprueban errores CSV, codificaciones, límites, validación de reglas, transformaciones, exportación segura, reproducibilidad, conservación de originales, reapertura del historial y fallos de escritura. La integración de Gradio usa un servidor local temporal y datos sintéticos.
+La suite incluye **40 pruebas**, entre ellas el flujo HTTP real de Gradio. GitHub Actions instala las dependencias fijadas y ejecuta las pruebas al actualizar `main` o abrir una pull request. Se comprueban errores CSV, codificaciones, límites, validación de reglas, transformaciones, exportación segura, reproducibilidad, conservación de originales, reapertura del historial y fallos de escritura. La integración de Gradio usa un servidor local temporal y datos sintéticos.
 
 ## Problemas frecuentes
 
